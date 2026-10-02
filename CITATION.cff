@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+title: "PreShift: Prediction-Aware Dataset Shift Detection and Risk Estimation for Machine Learning"
+message: "If you use PreShift in your research, please cite this software."
+type: software
+authors:
+
+* family-names: Tiwari
+  given-names: Aryan
+  email: [aryantiwari1112004@gmail.com](mailto:aryantiwari1112004@gmail.com)
+  repository-code: "https://github.com/aryantiwari1118/PreShift"
+  license: MIT
+  version: 0.1.0
+  date-released: 2026-09-29
+  keywords:
+* machine learning
+* dataset shift
+* distribution shift
+* data drift
+* model monitoring
+* risk estimation
+* machine learning reliability
+  abstract: >-
+  PreShift is a Python library for prediction-aware dataset shift detection
+  and risk estimation. It combines multiple distributional shift signals with
+  a risk prediction layer to estimate potential downstream model degradation
+  from unlabeled incoming data. The library provides statistical shift
+  detection, risk prediction, decision gating, calibration, and an
+  end-to-end monitoring pipeline.
+
