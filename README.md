@@ -1,624 +1,160 @@
 # PreShift
 
-**Prediction-aware dataset shift detection and risk estimation for machine learning.**
+**Prediction-aware dataset shift detection and risk estimation for machine learning monitoring.**
 
-PreShift is a Python library for characterizing distributional changes in incoming data and estimating their potential downstream impact on machine learning prediction performance.
+PreShift is a Python library for measuring changes between reference and incoming data, estimating downstream prediction risk from historical observations, and turning risk estimates into monitoring decisions.
 
-Traditional dataset-shift monitoring asks:
-
-> Has the incoming data distribution changed?
-
-PreShift extends this workflow by asking:
-
-> Can observed distributional changes be used to estimate downstream prediction risk before true outcomes become available?
-
-The library combines multiple statistical shift signals with a prediction-risk model and an optional decision layer for operational monitoring.
-
----
-
-## Key idea
-
-A distributional change does not necessarily imply that a deployed model will perform worse.
-
-PreShift therefore separates the monitoring problem into three stages:
-
-```text
-Incoming unlabeled data
-          │
-          ▼
-   Shift characterization
-          │
-          ▼
- Multi-signal representation
-          │
-          ▼
-    Risk prediction
-          │
-          ▼
- ACCEPT / WATCH / DEFER
-```
-
-The goal is to estimate potential downstream prediction degradation before delayed ground-truth labels become available.
-
----
+Distribution shift does not automatically imply model failure. PreShift provides tools to measure shift and build a risk-estimation workflow; the usefulness of risk estimates must be validated for each application.
 
 ## Features
 
-PreShift currently provides:
-
-* Kolmogorov-Smirnov (KS) shift detection
-* Wasserstein distance
-* Population Stability Index (PSI)
-* Maximum Mean Discrepancy (MMD)
-* Configurable multi-metric shift detection
-* Multi-signal feature representation
-* Prediction-risk estimation
-* Risk-based decision gating
-* ACCEPT / WATCH / DEFER decisions
-* Quantile-based threshold calibration
-* Structured pipeline results
-* Input validation and error handling
-* Research-oriented examples and experiments
-
----
+- Multiple distribution-shift metrics: KS, Wasserstein, PSI, and MMD.
+- Risk prediction from historical shift metrics and observed downstream errors.
+- Threshold-based decision gating.
+- A pipeline API for combining detection, risk estimation, and decisions.
+- A Python API designed for integration into machine-learning monitoring workflows.
 
 ## Installation
 
-### Clone the repository
-
 ```bash
-git clone https://github.com/aryantiwari1118/PreShift.git
-cd PreShift
+pip install preshift
 ```
 
-### Install in editable mode
+If the package is not yet available on the public PyPI index, install from the repository instead:
 
 ```bash
-pip install -e .
+pip install git+https://github.com/aryantiwari1118/PreShift.git
 ```
-
-### Requirements
-
-* Python 3.10+
-* NumPy
-* Pandas
-* SciPy
-* scikit-learn
-
----
 
 ## Quick start
 
 ### 1. Detect dataset shift
 
 ```python
-
 import numpy as np
 from preshift import ShiftDetector
 
 rng = np.random.default_rng(42)
 
-# Historical/reference observations
-reference_data = rng.normal(
-    loc=0.0,
-    scale=1.0,
-    size=(500, 3),
-)
-
-# New observations to monitor
-incoming_data = rng.normal(
-    loc=0.5,
-    scale=1.2,
-    size=(200, 3),
-)
+reference_data = rng.normal(0.0, 1.0, size=(500, 3))
+incoming_data = rng.normal(0.5, 1.2, size=(200, 3))
 
 detector = ShiftDetector(
     reference_data,
     metrics=["ks", "wasserstein", "psi", "mmd"],
 )
 
-shift_scores = detector.detect(incoming_data)
+scores = detector.detect(incoming_data)
 
-for metric, score in shift_scores.items():
-    print(f"{metric}: {score:.4f}")
-
+for name, value in scores.items():
+    print(f"{name}: {value:.4f}")
 ```
 
-The detector can use multiple statistical signals to characterize the difference between reference and incoming data.
+The detector compares incoming observations with the reference data and returns scores for the selected metrics. Score scales and interpretations differ by metric; do not compare their raw magnitudes as if they were interchangeable.
 
-Supported metrics include:
+### 2. Estimate downstream prediction risk
 
-```text
-KS
-Wasserstein
-PSI
-MMD
-```
-
----
-
-## 2. Estimate prediction risk
-
-A risk predictor can be trained using historical shift representations and observed downstream model errors.
+Risk prediction requires historical examples pairing shift metrics with observed downstream model errors. Synthetic targets are useful for testing the API, but do not establish real predictive performance.
 
 ```python
+import numpy as np
 from preshift import RiskPredictor
 
-predictor = RiskPredictor()
+rng = np.random.default_rng(42)
 
-predictor.fit(
-    X_shift_features,
-    y_observed_risk
+feature_names = [
+    "ks_shift_score",
+    "wasserstein_shift_score",
+    "psi_shift_score",
+    "mmd_score",
+]
+
+X_history = rng.uniform(0.0, 1.0, size=(200, 4))
+
+# Demonstration targets only.
+# In production, use errors measured on historical batches.
+y_history = (
+    0.4 * X_history[:, 0]
+    + 0.3 * X_history[:, 1]
+    + 0.2 * X_history[:, 2]
+    + 0.1 * X_history[:, 3]
 )
 
-predicted_risk = predictor.predict(
-    X_current_shift
-)
+predictor = RiskPredictor(feature_names=feature_names)
+predictor.fit(X_history, y_history)
 
-print(predicted_risk)
+X_current = np.array([[0.33, 0.84, 0.57, 0.14]])
+risk = predictor.predict(X_current)
+
+print("Estimated risk:", risk)
 ```
 
-Here:
+For real use, calculate the same shift features on historical batches and measure the model's error on those batches. Keep the evaluation protocol separate from training to avoid overly optimistic results.
 
-* `X_shift_features` represents observed distributional-shift signals.
-* `y_observed_risk` represents historical downstream prediction error.
-* `predicted_risk` estimates expected downstream error for the current incoming batch.
+### 3. Apply decision gating
 
----
-
-## 3. Decision gating
-
-Predicted risk can be converted into an operational monitoring decision.
+A gate converts a numeric risk estimate into a monitoring decision.
 
 ```python
 from preshift import PreShiftGate
 
 gate = PreShiftGate(
-    accept_threshold=0.30,
-    watch_threshold=0.40
+    accept_threshold=0.10,
+    watch_threshold=0.20,
 )
 
-decision = gate.decide(predicted_risk)
-
+# Example risk value only
+decision = gate.decide(0.15)
 print(decision)
 ```
 
-Possible decisions are:
+The thresholds above are illustrative. Select thresholds using validation data and the cost of false alarms versus missed degradation. Verify the gate's exact method and return type against the installed version.
 
-```text
-ACCEPT
-WATCH
-DEFER
-```
+### 4. Use the integrated pipeline
 
-Conceptually:
-
-```text
-Low estimated risk
-       │
-       ▼
-    ACCEPT
-
-Moderate estimated risk
-       │
-       ▼
-     WATCH
-
-High estimated risk
-       │
-       ▼
-     DEFER
-```
-
-Thresholds should be calibrated for the deployment setting rather than treated as universal values.
-
----
-
-## 4. End-to-end pipeline
-
-PreShift also provides an integrated pipeline.
+PreShift also provides `PreShiftPipeline` to combine shift detection, risk estimation, and gating. The required constructor arguments and output structure depend on the installed API; consult the source and examples before relying on this section in production.
 
 ```python
 from preshift import (
     ShiftDetector,
     RiskPredictor,
     PreShiftGate,
-    PreShiftPipeline
+    PreShiftPipeline,
 )
 
-detector = ShiftDetector()
-
-risk_predictor = RiskPredictor(
-    feature_names=detector.feature_names
-)
-
-gate = PreShiftGate(
-    accept_threshold=0.30,
-    watch_threshold=0.40
-)
-
-pipeline = PreShiftPipeline(
-    reference_data=reference_data,
-    risk_predictor=risk_predictor,
-    gate=gate
-)
-
-result = pipeline.predict(
-    incoming_data
-)
-
-print(result.summary())
+# Construct these components using the same feature order
+# and thresholds validated for your application.
+# See the repository examples for the supported pipeline API.
 ```
 
-The resulting analysis contains:
+## Important considerations
 
-* shift scores
-* predicted risk
-* monitoring decision
+- A shift score is not a direct measure of model error.
+- Risk prediction requires representative historical shift features and observed errors.
+- Validate performance on future or otherwise held-out batches.
+- Monitor changes in data quality, feature types, seasonal patterns, and target relationships.
+- Thresholds should be selected for the application's operational costs.
+- Synthetic examples demonstrate usage only; they are not evidence of predictive accuracy.
 
----
+## Development
 
-# Research motivation
-
-Machine learning systems deployed over time may encounter data whose distribution differs from the historical training environment.
-
-A conventional drift detector can identify statistical differences between a reference distribution and incoming data. However, statistical shift alone does not directly quantify how much a downstream model's prediction performance will change.
-
-PreShift investigates a prediction-aware alternative:
-
-```text
-P_train(X) ≠ P_incoming(X)
-```
-
-is treated as evidence of distributional change, while the downstream objective is to estimate the corresponding prediction risk.
-
-The framework therefore studies the relationship between:
-
-```text
-Observed distributional shift
-              ↓
-      Shift representation
-              ↓
-      Downstream model error
-```
-
----
-
-# Shift detection
-
-PreShift currently implements four primary statistical signals.
-
-| Method      | Purpose                                                         |
-| ----------- | --------------------------------------------------------------- |
-| KS          | Measures the maximum difference between empirical distributions |
-| Wasserstein | Measures distributional distance using transport cost           |
-| PSI         | Measures population distribution changes across bins            |
-| MMD         | Measures multivariate distributional discrepancy using a kernel |
-
-Different metrics capture different aspects of distributional change. PreShift therefore supports combining multiple signals rather than relying on a single statistic.
-
----
-
-# Prediction-aware risk estimation
-
-The central research component is the risk prediction layer.
-
-Historical observations can be represented as:
-
-```text
-Shift features → Observed downstream error
-```
-
-A supervised risk model learns this relationship.
-
-For a new incoming batch:
-
-```text
-Reference data
-      +
-Incoming unlabeled data
-      ↓
-Shift metrics
-      ↓
-Risk predictor
-      ↓
-Estimated downstream error
-```
-
-The resulting estimate can be used before true labels for the incoming batch become available.
-
----
-
-# Decision support
-
-The predicted risk can optionally be mapped to operational actions:
-
-```text
-Estimated risk
-
-      LOW
-       │
-       ▼
-    ACCEPT
-
-    MEDIUM
-       │
-       ▼
-     WATCH
-
-     HIGH
-       │
-       ▼
-     DEFER
-```
-
-These thresholds are deployment-specific and should be calibrated using historical validation data.
-
-PreShift does not assume that a particular threshold is universally appropriate.
-
----
-
-# Research experiments
-
-The repository contains experiments investigating prediction-aware dataset-shift monitoring.
-
-## Bike Sharing
-
-The controlled benchmark uses the UCI Bike Sharing dataset and investigates several shift mechanisms:
-
-* temperature mean shift
-* humidity mean shift
-* humidity variance shift
-* feature-dependency shift
-* categorical weather shift
-
-Controlled shift magnitudes range from 0.0 to 1.0.
-
-The repository also contains a natural chronological evaluation using temporal batches.
-
----
-
-## Air Quality
-
-Air Quality data is used as an additional validation dataset.
-
-The experiments evaluate whether relationships between shift signals and downstream prediction degradation can be observed beyond the Bike Sharing benchmark.
-
----
-
-# Controlled LOMO evaluation
-
-The controlled Bike Sharing benchmark evaluates risk prediction using **leave-one-magnitude-out (LOMO)** validation.
-
-For each magnitude:
-
-```text
-Training:
-all other shift magnitudes
-
-Testing:
-held-out magnitude
-```
-
-This evaluates whether the risk predictor can estimate downstream degradation at a magnitude that was not directly included in training.
-
-Current controlled benchmark result:
-
-| Metric               |     LOMO |
-| -------------------- | -------: |
-| MAE                  | 0.021856 |
-| RMSE                 | 0.032586 |
-| R²                   | 0.712263 |
-| Spearman correlation | 0.644242 |
-
-These results are specific to the controlled Bike Sharing experiment and should not be interpreted as universal performance guarantees.
-
----
-
-# Ablation study
-
-The controlled benchmark also evaluates different shift-signal combinations.
-
-| Feature set            |          MAE |         RMSE |           R² |     Spearman |
-| ---------------------- | -----------: | -----------: | -----------: | -----------: |
-| KS                     |     0.044801 |     0.059580 |     0.038114 |     0.014329 |
-| Wasserstein            |     0.040844 |     0.052224 |     0.260964 |     0.065676 |
-| PSI                    |     0.030032 |     0.043827 |     0.479513 |     0.242487 |
-| MMD                    |     0.041615 |     0.055730 |     0.158390 |     0.106137 |
-| Categorical            |     0.044753 |     0.061428 |    -0.022488 |    -0.396737 |
-| KS + Wasserstein       |     0.042102 |     0.054799 |     0.186272 |     0.054341 |
-| KS + Wasserstein + PSI |     0.027817 |     0.036408 |     0.640817 |     0.261490 |
-| Numerical signals      |     0.025936 |     0.035687 |     0.654891 |     0.361210 |
-| All five signals       | **0.021856** | **0.032586** | **0.712263** | **0.644242** |
-
-The controlled ablation indicates that combining heterogeneous shift signals can improve prediction of downstream degradation relative to individual signals in this benchmark.
-
----
-
-# Important research caveats
-
-PreShift is a research-oriented library and the current results have several limitations.
-
-### Controlled experiments
-
-Controlled shift experiments are performed on specific datasets and prediction models. Results should not be interpreted as evidence of universal performance across datasets or deployment environments.
-
-### Risk-model dependence
-
-The risk predictor requires historical examples connecting observed shift features with downstream model error.
-
-### Threshold dependence
-
-ACCEPT / WATCH / DEFER thresholds are application-dependent and should be calibrated for the intended deployment environment.
-
-### Unlabeled incoming data
-
-Prediction-aware risk estimation is designed for situations where incoming features are available before corresponding ground-truth labels. Once labels become available, actual model performance should be measured and used for monitoring and recalibration.
-
-### Generalization
-
-The current experiments do not establish universal generalization to arbitrary datasets, prediction models, or unseen shift mechanisms.
-
----
-
-# Repository structure
-
-```text
-PreShift/
-│
-├── src/
-│   └── preshift/
-│       ├── __init__.py
-│       ├── calibration.py
-│       ├── detector.py
-│       ├── gate.py
-│       ├── ks.py
-│       ├── mmd.py
-│       ├── pipeline.py
-│       ├── psi.py
-│       ├── result.py
-│       ├── risk.py
-│       ├── utils.py
-│       └── wasserstein.py
-│
-├── tests/
-│
-├── examples/
-│
-├── research/
-│   ├── bike_sharing/
-│   ├── air_quality/
-│   └── data/
-│
-├── README.md
-├── CHANGELOG.md
-├── CITATION.cff
-├── LICENSE
-├── pyproject.toml
-└── .gitignore
-```
-
----
-
-# Testing
-
-The current test suite covers the core library components, including:
-
-* shift metrics
-* shift detector
-* risk predictor
-* decision gate
-* calibration
-* pipeline
-* structured results
-
-Run the test suite with:
+Clone the repository:
 
 ```bash
-python -m pytest -q
+git clone https://github.com/aryantiwari1118/PreShift.git
+cd PreShift
 ```
 
-Current development status:
-
-```text
-51 tests passed
-```
-
----
-
-# Building the package
-
-Install the build tool:
+Install development dependencies according to the project configuration, then run the test suite:
 
 ```bash
-pip install build
+python -m pytest
 ```
 
-Build the source distribution and wheel:
+## Contributing
 
-```bash
-python -m build
-```
+Bug reports, reproducible examples, tests, and documentation improvements are welcome. Please include the Python version, PreShift version, and a minimal example when reporting an issue.
 
-The generated files will be placed in:
+## License
 
-```text
-dist/
-```
-
----
-
-# Examples
-
-Example scripts are available under:
-
-```text
-examples/
-```
-
-including:
-
-```text
-basic_detection.py
-full_pipeline.py
-gate.py
-risk_prediction.py
-wheel_smoke_test.py
-```
-
-These examples demonstrate the main library functionality independently of the research experiments.
-
----
-
-# Version
-
-Current version:
-
-```text
-0.1.0
-```
-
-PreShift is currently an early research/software release.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for release information.
-
----
-
-# License
-
-PreShift is released under the MIT License.
-
-See [`LICENSE`](LICENSE) for the complete license text.
-
----
-
-# Citation
-
-If you use PreShift in academic or research work, please cite the software using the metadata provided in:
-
-```text
-CITATION.cff
-```
-
-Repository:
-
-https://github.com/aryantiwari1118/PreShift
-
----
-
-# Disclaimer
-
-PreShift is intended for research and experimental machine-learning monitoring.
-
-Predicted risk values are estimates produced from historical relationships between shift characteristics and observed downstream model performance. They should not automatically be interpreted as guarantees of future model behavior.
-
-Deployment decisions should consider application-specific validation, calibration, monitoring requirements, and the availability of ground-truth outcomes.
-
----
-
-# Author
-
-**Aryan Tiwari**
-
-GitHub:
-https://github.com/aryantiwari1118
+PreShift is distributed under the MIT License. See [LICENSE](LICENSE).
