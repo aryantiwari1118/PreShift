@@ -92,15 +92,36 @@ pip install -e .
 ### 1. Detect dataset shift
 
 ```python
+
+import numpy as np
 from preshift import ShiftDetector
 
-detector = ShiftDetector()
+rng = np.random.default_rng(42)
 
-detector.fit(reference_data)
+# Historical/reference observations
+reference_data = rng.normal(
+    loc=0.0,
+    scale=1.0,
+    size=(500, 3),
+)
 
-result = detector.detect(incoming_data)
+# New observations to monitor
+incoming_data = rng.normal(
+    loc=0.5,
+    scale=1.2,
+    size=(200, 3),
+)
 
-print(result)
+detector = ShiftDetector(
+    reference_data,
+    metrics=["ks", "wasserstein", "psi", "mmd"],
+)
+
+shift_scores = detector.detect(incoming_data)
+
+for metric, score in shift_scores.items():
+    print(f"{metric}: {score:.4f}")
+
 ```
 
 The detector can use multiple statistical signals to characterize the difference between reference and incoming data.
