@@ -96,16 +96,18 @@ For real use, calculate the same shift features on historical batches and measur
 A gate converts a numeric risk estimate into a monitoring decision.
 
 ```python
+
 from preshift import PreShiftGate
 
 gate = PreShiftGate(
-    accept_threshold=0.10,
-    watch_threshold=0.20,
+    accept_threshold=0.30,
+    watch_threshold=0.40,
 )
 
-# Example risk value only
-decision = gate.decide(0.15)
-print(decision)
+print(gate.decide(0.20))  # ACCEPT
+print(gate.decide(0.35))  # WATCH
+print(gate.decide(0.50))  # DEFER
+
 ```
 
 The thresholds above are illustrative. Select thresholds using validation data and the cost of false alarms versus missed degradation. Verify the gate's exact method and return type against the installed version.
@@ -115,12 +117,56 @@ The thresholds above are illustrative. Select thresholds using validation data a
 PreShift also provides `PreShiftPipeline` to combine shift detection, risk estimation, and gating. The required constructor arguments and output structure depend on the installed API; consult the source and examples before relying on this section in production.
 
 ```python
+
+import numpy as np
 from preshift import (
     ShiftDetector,
     RiskPredictor,
     PreShiftGate,
     PreShiftPipeline,
 )
+
+rng = np.random.default_rng(42)
+
+reference_data = rng.normal(0.0, 1.0, size=(500, 3))
+
+# Demonstration data only; real use requires historical
+# shift features paired with measured downstream model errors.
+X_history = rng.uniform(0.0, 1.0, size=(200, 4))
+y_history = (
+    0.4 * X_history[:, 0]
+    + 0.3 * X_history[:, 1]
+    + 0.2 * X_history[:, 2]
+    + 0.1 * X_history[:, 3]
+)
+
+detector = ShiftDetector(
+    reference_data,
+    metrics=["ks", "wasserstein", "psi", "mmd"],
+)
+
+predictor = RiskPredictor(
+    feature_names=detector.feature_names()
+)
+predictor.fit(X_history, y_history)
+
+gate = PreShiftGate(
+    accept_threshold=0.30,
+    watch_threshold=0.40,
+)
+
+pipeline = PreShiftPipeline(
+    reference_data=reference_data,
+    risk_predictor=predictor,
+    gate=gate,
+    metrics=["ks", "wasserstein", "psi", "mmd"],
+)
+
+incoming_data = rng.normal(0.2, 1.1, size=(200, 3))
+result = pipeline.predict(incoming_data)
+
+print(result.summary())
+
 
 # Construct these components using the same feature order
 # and thresholds validated for your application.
