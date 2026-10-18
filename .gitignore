@@ -18,3 +18,8 @@ dist/
 
 .DS_Store
 Thumbs.db
+# Local release test environment
+.venv-release-test/
+
+# Local release test environment
+.venv-release-test/
