@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PreShift — Prediction-Aware Dataset Shift Monitoring</title>
+<meta name="description" content="PreShift is an open-source Python toolkit for dataset shift detection, historical prediction-risk estimation, and monitoring decisions.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://aryantiwari1118.github.io/PreShift/">
+<meta property="og:title" content="PreShift — Prediction-Aware Dataset Shift Monitoring">
+<meta property="og:description" content="Detect distribution changes, estimate risk from historical evidence, and support ML monitoring decisions.">
+<meta property="og:url" content="https://aryantiwari1118.github.io/PreShift/">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PreShift","applicationCategory":"DeveloperApplication","operatingSystem":"Cross-platform","softwareVersion":"0.1.0","description":"Open-source Python toolkit for dataset shift detection, historical risk estimation, and monitoring decisions.","codeRepository":"https://github.com/aryantiwari1118/PreShift","downloadUrl":"https://pypi.org/project/preshift/","license":"https://opensource.org/license/mit"}</script>
+</head>
+<body>
+<header class="nav wrap"><a class="brand" href="#top"><span class="mark">P</span> PreShift</a><nav><a href="#workflow">Workflow</a><a href="#features">Features</a><a href="#limits">Limitations</a><a class="navbutton" href="https://github.com/aryantiwari1118/PreShift">GitHub ↗</a></nav></header>
+<main id="top">
+<section class="hero wrap"><div class="eyebrow">● OPEN-SOURCE PYTHON PROJECT</div><h1>See the shift.<br><span>Investigate the risk.</span></h1><p class="lead">PreShift is a research-oriented toolkit for monitoring changes between reference and incoming data, learning from historical prediction errors, and turning signals into actionable monitoring decisions.</p><div class="buttons"><a class="btn primary" href="https://pypi.org/project/preshift/">Install from PyPI ↗</a><a class="btn" href="https://github.com/aryantiwari1118/PreShift">Explore source code ↗</a></div><div class="install"><code>python -m pip install preshift</code><button id="copy">Copy</button></div><small>Python package · MIT license · Public source code</small></section>
+<section id="workflow" class="wrap panel"><div class="eyebrow">MONITORING WORKFLOW</div><div class="steps"><article><b>01</b><h3>Compare data</h3><p>Reference dataset vs. incoming batch</p></article><article><b>02</b><h3>Measure shift</h3><p>Statistical signals across features</p></article><article><b>03</b><h3>Estimate risk</h3><p>Use historical shift/error pairs</p></article><article><b>04</b><h3>Choose action</h3><p><em>ACCEPT · WATCH · DEFER</em></p></article></div><p class="note">A distribution shift is a signal to investigate—not proof that a model has failed.</p></section>
+<section id="features" class="wrap section"><div class="eyebrow">WHAT IT OFFERS</div><h2>From drift signals to a monitoring decision.</h2><div class="cards"><article><div class="symbol">↗</div><h3>Multiple shift signals</h3><p>Compare reference and incoming data using supported metrics such as KS, Wasserstein distance, PSI, and MMD.</p></article><article><div class="symbol">◎</div><h3>Historical risk estimation</h3><p>Train a risk predictor on shift features paired with observed downstream prediction errors from historical batches.</p></article><article><div class="symbol">⌁</div><h3>Decision gate</h3><p>Translate risk estimates into configurable ACCEPT, WATCH, or DEFER actions for further investigation.</p></article></div></section>
+<section class="wrap section split"><div><div class="eyebrow">HOW IT WORKS</div><h2>A practical monitoring pipeline.</h2><p>PreShift connects data-distribution monitoring with observed model performance. The risk predictor should be trained on representative historical batches where downstream error is measured.</p><a class="textlink" href="https://github.com/aryantiwari1118/PreShift#readme">Read the documentation ↗</a></div><pre><code><span># Illustrative workflow</span>
+scores = detector.detect(incoming_batch)
+features = detector.to_feature_array(scores)
+risk = risk_predictor.predict(features)
+decision = gate.decide(risk)
+
+<span># Validate risk estimates.</span></code></pre></section>
+<section id="limits" class="wrap section limits"><div class="eyebrow">RESEARCH TRANSPARENCY</div><h2>Signals are not guarantees.</h2><p>Shift metrics measure differences between datasets; they do not establish that prediction quality has degraded. Risk estimates depend on the quality and representativeness of historical training data and should not be assumed calibrated without validation. Evaluate on real, held-out batches before production use.</p></section>
+<section class="wrap cta"><div><div class="eyebrow">TRY IT · REVIEW IT · CONTRIBUTE</div><h2>Explore PreShift.</h2><p>Read the source, install the package, and inspect examples and tests.</p></div><div class="buttons"><a class="btn primary" href="https://pypi.org/project/preshift/">PyPI package ↗</a><a class="btn" href="https://github.com/aryantiwari1118/PreShift">GitHub repository ↗</a></div></section>
+</main><footer class="wrap footer"><a class="brand" href="#top"><span class="mark">P</span> PreShift</a><p>Open-source project for research and experimentation.</p><p><a href="https://github.com/aryantiwari1118/PreShift/blob/main/LICENSE">MIT License</a></p></footer>
+<script>document.getElementById('copy').addEventListener('click',async function(){try{await navigator.clipboard.writeText('python -m pip install preshift');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)}catch(e){this.textContent='Copy unavailable'}})</script>
+</body></html>

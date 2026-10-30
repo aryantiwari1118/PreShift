@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://aryantiwari1118.github.io/PreShift/sitemap.xml
